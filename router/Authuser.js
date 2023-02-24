@@ -7,24 +7,34 @@ require("dotenv").config();
 
 AuthRouter.post("/signup", async (req, res) => {
   const { name, email, mobile_no, password } = req.body;
+  if (!name || !email || !mobile_no || !password) {
+    return res.status(403).send("requried field not found");
+  }
+  const isEmailExist = await Authuser.findOne({ email });
+  if (isEmailExist) {
+    return res.status(403).send("email already exist");
+  }
   try {
     bcrypt.hash(password, 12, async (err, Secure_Password) => {
       if (err) {
-        console.log(err);
-      } else {
-        const signupdata = new Authuser({
-          name,
-          email,
-          mobile_no,
-          password: Secure_Password,
-        });
-        await signupdata.save();
-        res.send({ Message: "Signup successfully", signupdata: signupdata });
+        res.status(500).send("Internal server error", err.message);
       }
+      const signupdata = new Authuser({
+        name,
+        email,
+        mobile_no,
+        password: Secure_Password,
+      });
+
+      signupdata.save((err, _result) => {
+        if (err) {
+          return res.status(500).send("Something went wrong");
+        }
+        return res.status(200).send("signup sucessful");
+      });
     });
   } catch (error) {
-    res.send("Error in Signup the user");
-    console.log(error);
+    res.status(500).send("Error in Signup the user", error.message);
   }
 });
 
@@ -36,16 +46,24 @@ AuthRouter.post("/login", async (req, res) => {
     if (logindata) {
       bcrypt.compare(password, hashpassword, (err, result) => {
         if (!err) {
-          const token = jwt.sign({ user_name: logindata.name }, process.env.jwt_key, {
-            expiresIn: "1d",
+          const token = jwt.sign(
+            { user_name: logindata.name },
+            process.env.jwt_key,
+            {
+              expiresIn: "1d",
+            }
+          );
+          res.send({
+            token: token,
+            user_name: logindata.name,
+            message: "login successfully",
           });
-          res.send({ token: token, user_name:logindata.name, message: "login successfully" });
         } else {
-          res.send("Wrong Credntials1");
+          res.status(401).send("Wrong Credntials1");
         }
       });
     } else {
-      res.send("Wrong Credntials2");
+      res.status(401).send("Wrong Credntials2");
     }
   } catch (error) {
     console.log(error);
