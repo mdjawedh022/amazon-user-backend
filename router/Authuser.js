@@ -28,22 +28,18 @@ AuthRouter.post("/signup", async (req, res) => {
   }
 });
 
-AuthRouter.post("/lognin", async (req, res) => {
+AuthRouter.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    const logindata = await Authuser.find({ email });
-    const hashpassword = logindata[0].password;
-    if (logindata.length > 0) {
+    const logindata = await Authuser.findOne({ email });
+    const hashpassword = logindata.password;
+    if (logindata) {
       bcrypt.compare(password, hashpassword, (err, result) => {
         if (!err) {
-          const token = jwt.sign(
-            { userID: logindata[0]._id },
-            process.env.jwt_key,
-            {
-              expiresIn: "1d",
-            }
-          );
-          res.send({ token: token, message: "login successfully" });
+          const token = jwt.sign({ user_name: logindata.name }, process.env.jwt_key, {
+            expiresIn: "1d",
+          });
+          res.send({ token: token, user_name:logindata.name, message: "login successfully" });
         } else {
           res.send("Wrong Credntials1");
         }
